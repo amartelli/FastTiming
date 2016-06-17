@@ -19,6 +19,16 @@
 #include "DataFormats/JetReco/interface/GenJet.h"
 #include "DataFormats/JetReco/interface/PFJet.h"
 #include "DataFormats/Common/interface/SortedCollection.h"
+#include "DataFormats/HGCRecHit/interface/HGCRecHit.h"
+//#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "DataFormats/ForwardDetId/interface/HGCalDetId.h"
+#include "DataFormats/ForwardDetId/interface/HGCEEDetId.h"
+#include "DataFormats/ForwardDetId/interface/HGCHEDetId.h"
+//#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"
+#include "Geometry/FCalGeometry/interface/HGCalGeometry.h"
+//#include "SimDataFormats/CaloTest/interface/HGCalTestNumbering.h"
+#include "RecoCaloTools/Navigation/interface/CaloNavigator.h"
 
 #include "FastTiming/RecoTreeUtils/interface/JetWithFT.h"
 #include "FastTiming/RecoTreeUtils/interface/FTFile.h"
@@ -44,7 +54,7 @@ public:
     void         AssignNeutralToVtxs(vector<PFCandidateWithFT*>* neutral_cand);
     void         ProcessVertices();
     void         ProcessParticles(vector<PFCandidateWithFT*>* particles, int iVtx);
-    void         ProcessJets(vector<EcalRecHit>* recVectEK);
+    void         ProcessJets(vector<HGCRecHit>* recVectHG);
     void         ComputeSumEt();
         
 private:
@@ -53,8 +63,9 @@ private:
     virtual void endJob();
 
     int iEvent_;
-    const CaloGeometry* skGeometry_;
-    const CaloGeometry* ebGeometry_;
+    // const CaloGeometry* skGeometry_;
+    // const CaloGeometry* ebGeometry_;
+    const HGCalGeometry* hgGeometry_;
     const MagneticField* magField_;
     //---output file---
     edm::Service<TFileService> fs_;
@@ -66,8 +77,9 @@ private:
     edm::InputTag recoJetsInputTag_;
     //---objects interfaces---
     edm::ESHandle<MagneticField> magFieldHandle_;             
-    edm::ESHandle<CaloGeometry> geoHandleEK_;
-    edm::ESHandle<CaloGeometry> geoHandleEB_;
+    // edm::ESHandle<CaloGeometry> geoHandleEK_;
+    // edm::ESHandle<CaloGeometry> geoHandleEB_;
+    edm::ESHandle<HGCalGeometry> geoHandleHG_;
     edm::Handle<vector<SimVertex> > genSigVtxHandle_;
     //edm::Handle<vector<SimVertex> > genVtxsHandle_;
     edm::Handle<vector<TrackingVertex> > genVtxsHandle_;
@@ -76,10 +88,12 @@ private:
     edm::Handle<vector<reco::GenParticle> > genPartHandle_;
     edm::Handle<vector<reco::GenJet> > genJetsHandle_;
     edm::Handle<vector<reco::PFJet> > recoJetsHandle_;
-    edm::Handle<edm::SortedCollection<EcalRecHit, 
-                                      edm::StrictWeakOrdering<EcalRecHit > > > recSortEK_;
-    edm::Handle<edm::SortedCollection<EcalRecHit, 
-                                      edm::StrictWeakOrdering<EcalRecHit > > > recSortEB_;
+    edm::Handle<edm::SortedCollection<HGCRecHit, 
+                                      edm::StrictWeakOrdering<HGCRecHit > > > recSortHG_;
+    // edm::Handle<edm::SortedCollection<EcalRecHit, 
+    //                                   edm::StrictWeakOrdering<EcalRecHit > > > recSortEK_;
+    // edm::Handle<edm::SortedCollection<EcalRecHit, 
+  //                                      edm::StrictWeakOrdering<EcalRecHit > > > recSortEB_;
     //---FT objects---
     map<int, const TrackingVertex*> genVtxsMap_;
     vector<VertexWithFT> recoVtxCollection_;
@@ -92,6 +106,8 @@ private:
     float pz2Cut_;
     bool makeGhosts_;
     bool saveParticles_;
+    bool saveJets_;
+    bool saveSumEt_;
     bool saveAllRecHits_;
     bool saveVertices_;
     bool readMVA_;
@@ -109,6 +125,8 @@ RecoFastTiming::RecoFastTiming(const edm::ParameterSet& Config)
     ptCut_ = Config.getUntrackedParameter<double>("ptCut");
     pz2Cut_ = Config.getUntrackedParameter<double>("pz2Cut");
     saveParticles_ = Config.getUntrackedParameter<bool>("saveParticles");
+    saveJets_ = Config.getUntrackedParameter<bool>("saveJets");
+    saveSumEt_ = Config.getUntrackedParameter<bool>("saveSumEt");
     saveAllRecHits_ = Config.getUntrackedParameter<bool>("saveAllRecHits");
     saveVertices_ = Config.getUntrackedParameter<bool>("saveVertices");
 
@@ -144,11 +162,17 @@ void RecoFastTiming::analyze(const edm::Event& Event, const edm::EventSetup& Set
     //---get the magnetic field---
     Setup.get<IdealMagneticFieldRecord>().get(magFieldHandle_);
     magField_ = magFieldHandle_.product();
-    //---get the geometry(s)---
-    Setup.get<CaloGeometryRecord>().get(geoHandleEK_);
-    skGeometry_ = geoHandleEK_.product();
-    Setup.get<CaloGeometryRecord>().get(geoHandleEB_);
-    ebGeometry_ = geoHandleEB_.product();
+    // //---get the geometry(s)---
+    // Setup.get<CaloGeometryRecord>().get(geoHandleEK_);
+    // skGeometry_ = geoHandleEK_.product();
+    // Setup.get<CaloGeometryRecord>().get(geoHandleEB_);
+    // ebGeometry_ = geoHandleEB_.product();
+
+    std::string name = "HGCalEESensitive";
+    Setup.get<IdealGeometryRecord>().get(name,geoHandleHG_);
+    hgGeometry_ = geoHandleHG_.product();
+    //if (geom.isValid()) 
+
     //---get gen particles---
     Event.getByLabel("genParticles", genPartHandle_);
     //---get gen jets---
@@ -158,7 +182,8 @@ void RecoFastTiming::analyze(const edm::Event& Event, const edm::EventSetup& Set
 
     //---get reco primary vtxs---
     VertexWithFT* recoSignalVtx=NULL;
-    Event.getByLabel("offlinePrimaryVerticesWithBS", recoVtxHandle_);
+    //    Event.getByLabel("offlinePrimaryVerticesWithBS", recoVtxHandle_);
+    Event.getByLabel("offlinePrimaryVertices4D", recoVtxHandle_);
     recoVtxCollection_.clear();
     for(unsigned int iVtx=0; iVtx<recoVtxHandle_.product()->size(); ++iVtx)
     {
@@ -186,18 +211,25 @@ void RecoFastTiming::analyze(const edm::Event& Event, const edm::EventSetup& Set
         Event.getByLabel(genVtxInputTag_, genVtxsHandle_);    
     FindGenVtxs();
 
-    //---get EK detailed time RecHits---
-    Event.getByLabel(edm::InputTag("ecalDetailedTimeRecHit", "EcalRecHitsEK", "RECO"),
-                      recSortEK_);
-    if(!recSortEK_.isValid())
+    //---get HG RecHits---
+    Event.getByLabel(edm::InputTag("HGCalRecHit", "HGCEERecHits", "RECO"),
+		     recSortHG_);
+    if(!recSortHG_.isValid())
         return;
-    vector<EcalRecHit>* recVectEK = (vector<EcalRecHit>*)recSortEK_.product();
+    vector<HGCRecHit>* recVectHG = (vector<HGCRecHit>*)recSortHG_.product();
+
     //---get EK detailed time RecHits---
-    Event.getByLabel(edm::InputTag("ecalDetailedTimeRecHit", "EcalRecHitsEB", "RECO"),
-                      recSortEB_);
-    if(!recSortEB_.isValid())
-        return;
-    vector<EcalRecHit>* recVectEB = (vector<EcalRecHit>*)recSortEB_.product();
+    // Event.getByLabel(edm::InputTag("ecalDetailedTimeRecHit", "EcalRecHitsEK", "RECO"),
+    // 		     recSortEK_);
+    // if(!recSortEK_.isValid())
+    //     return;
+    // vector<EcalRecHit>* recVectEK = (vector<EcalRecHit>*)recSortEK_.product();
+    // //---get EB detailed time RecHits---
+    // Event.getByLabel(edm::InputTag("ecalDetailedTimeRecHit", "EcalRecHitsEB", "RECO"),
+    //                   recSortEB_);
+    // if(!recSortEB_.isValid())
+    //     return;
+    // vector<EcalRecHit>* recVectEB = (vector<EcalRecHit>*)recSortEB_.product();
 
     //---convert all particles---
     Event.getByLabel("particleFlow", candHandle_);
@@ -207,11 +239,11 @@ void RecoFastTiming::analyze(const edm::Event& Event, const edm::EventSetup& Set
     {
       if(!candHandle_.product()->at(iCand).superClusterRef().isNull() &&
 	 fabs(candHandle_.product()->at(iCand).superClusterRef().get()->eta())<1.47)
-	particle = PFCandidateWithFT(&candHandle_.product()->at(iCand), recVectEB,
-				     ebGeometry_, magField_, genSignalVtx, recoSignalVtx);            
+	particle = PFCandidateWithFT(&candHandle_.product()->at(iCand), recVectHG,
+				     hgGeometry_, magField_, genSignalVtx, recoSignalVtx);            
       else
-        particle = PFCandidateWithFT(&candHandle_.product()->at(iCand), recVectEK,
-                                     skGeometry_, magField_, genSignalVtx, recoSignalVtx);
+        particle = PFCandidateWithFT(&candHandle_.product()->at(iCand), recVectHG,
+                                     hgGeometry_, magField_, genSignalVtx, recoSignalVtx);
       particlesCollection_.push_back(particle);
     }
 
@@ -222,12 +254,16 @@ void RecoFastTiming::analyze(const edm::Event& Event, const edm::EventSetup& Set
     {
         PFCandidateWithFT* particleRef = &particlesCollection_.at(iPart);
         particleRef->SetMVAComputer(mvaComputer_);
-        if(particleRef->particleId() < 4)
-        {
+        if(particleRef->particleId() < 4){
+
             FindVtxSeedParticle(particleRef);
+	    std::cout << " >>> puo essere hasTime = " << particleRef->hasTime() << std::endl;
+	    std::cout << " >>> puo essere GetRecoVtx = " << particleRef->GetRecoVtx() << std::endl;
+
             if(particleRef->hasTime() && particleRef->GetRecoVtx() &&
                !particleRef->GetRecoVtx()->hasSeed())
             {
+	      std::cout << " >>> puo essere hasTime && GetRecoVtx? " << std::endl;
                 //---set the seed (particles are pt ordered so do this just once)
                 particleRef->GetRecoVtx()->SetSeed(particleRef);
             }
@@ -260,8 +296,11 @@ void RecoFastTiming::analyze(const edm::Event& Event, const edm::EventSetup& Set
         ProcessParticles(&allParticlesRefs, -1);
     }
 
-    ProcessJets(recVectEK);
-    ComputeSumEt();
+    if(saveJets_)
+      ProcessJets(recVectHG);
+
+    if(saveSumEt_)
+      ComputeSumEt();
 
     return;
 }
@@ -438,8 +477,10 @@ void RecoFastTiming::ProcessVertices()
         if(gen_jet.isJet()) 
             if(gen_jet.isJet())
             {
-                if(goodGJ1 == -1)
-                    goodGJ1 = countGJ;
+	      if(goodGJ1 == -1){
+		goodGJ1 = countGJ;
+		//		std::cout << " >>> goodGJ1 = " << goodGJ1 << std::endl;
+	      }
                 else if(goodGJ2 == -1)
                     goodGJ2 = countGJ;
             }
@@ -453,9 +494,9 @@ void RecoFastTiming::ProcessVertices()
         //---fix references after sort
         it->FixVtxRefs();
         outFile_->verticesTree.gen_j1_pt = genJetsHandle_.product()->at(goodGJ1).pt();
-        outFile_->verticesTree.gen_j2_pt = genJetsHandle_.product()->at(goodGJ1).pt();
+        outFile_->verticesTree.gen_j2_pt = genJetsHandle_.product()->at(goodGJ2).pt();
         outFile_->verticesTree.gen_j1_eta = genJetsHandle_.product()->at(goodGJ1).eta();
-        outFile_->verticesTree.gen_j2_eta = genJetsHandle_.product()->at(goodGJ1).eta();
+        outFile_->verticesTree.gen_j2_eta = genJetsHandle_.product()->at(goodGJ2).eta();
         outFile_->verticesTree.event_n = iEvent_;
         outFile_->verticesTree.reco_vtx_index = iVtx;
         outFile_->verticesTree.reco_vtx_ndof = it->GetRecoVtxRef()->ndof();
@@ -465,34 +506,39 @@ void RecoFastTiming::ProcessVertices()
         outFile_->verticesTree.reco_vtx_sumpt2_EE = it->sumPtSquared(dzCut_, ptCut_, 0);
 
         outFile_->verticesTree.reco_vtx_seed_pt = it->GetSeedRef() ?
-            it->GetSeedRef()->pt() : -1;
+            it->GetSeedRef()->pt() : -10;
         outFile_->verticesTree.reco_vtx_seed_eta = it->GetSeedRef() ?
-            it->GetSeedRef()->eta() : -1;
+            it->GetSeedRef()->eta() : -10;
         outFile_->verticesTree.reco_vtx_seed_t = it->GetSeedRef() && it->GetSeedRef()->hasTime() ?
             it->GetSeedRef()->GetVtxTime(tRes_, false) : -100;
         outFile_->verticesTree.reco_vtx_seed_E = it->GetSeedRef() ?
-	  it->GetSeedRef()->ecalEnergy() : -1;
+	  it->GetSeedRef()->ecalEnergy() : -10;
 
         outFile_->verticesTree.reco_vtx_z = it->z();
 
         outFile_->verticesTree.reco_vtx_t = it->ComputeTime(0, ptCut_, pz2Cut_, tRes_);        
         outFile_->verticesTree.reco_vtx_t_EE = it->GetTimeEE();        
-        outFile_->verticesTree.reco_vtx_t_EE = it->GetTimeEE();        
+        outFile_->verticesTree.reco_vtx_t_EB = it->GetTimeEB();        
 
         outFile_->verticesTree.reco_vtx_n_part = it->GetNPart();
         outFile_->verticesTree.reco_vtx_n_part_EE = it->GetNPartEE();
+        outFile_->verticesTree.reco_vtx_n_part_EB = it->GetNPartEB();
 
         outFile_->verticesTree.reco_vtx_cha_t = it->ComputeTime(1, ptCut_, pz2Cut_, tRes_);
         outFile_->verticesTree.reco_vtx_cha_t_EE = it->GetTimeEE();
+        outFile_->verticesTree.reco_vtx_cha_t_EB = it->GetTimeEB();
 
         outFile_->verticesTree.reco_vtx_n_cha = it->GetNPart();
         outFile_->verticesTree.reco_vtx_n_cha_EE = it->GetNPartEE();
+        outFile_->verticesTree.reco_vtx_n_cha_EB = it->GetNPartEB();
 
         outFile_->verticesTree.reco_vtx_neu_t = it->ComputeTime(2, ptCut_, pz2Cut_, tRes_);
         outFile_->verticesTree.reco_vtx_neu_t_EE = it->GetTimeEE();
+        outFile_->verticesTree.reco_vtx_neu_t_EB = it->GetTimeEB();
 
         outFile_->verticesTree.reco_vtx_n_neu = it->GetNPart();
         outFile_->verticesTree.reco_vtx_n_neu_EE = it->GetNPartEE();
+        outFile_->verticesTree.reco_vtx_n_neu_EB = it->GetNPartEB();
 
         if(it->GetGenVtxRef())
         {
@@ -505,7 +551,8 @@ void RecoFastTiming::ProcessVertices()
         else
             outFile_->verticesTree.gen_vtx_id = -1;
         outFile_->verticesTree.Fill();
-        if(saveParticles_)
+ 
+	if(saveParticles_)
         {
             vector<PFCandidateWithFT*> vtxParticles = it->GetParticles();
             ProcessParticles(&vtxParticles, iVtx);
@@ -575,7 +622,7 @@ void RecoFastTiming::ProcessParticles(vector<PFCandidateWithFT*>* particles, int
     }
 }
 
-void RecoFastTiming::ProcessJets(vector<EcalRecHit>* recVectEK)
+void RecoFastTiming::ProcessJets(vector<HGCRecHit>* recVectHG)
 {
     outFile_->jetsTree.gen_n = 0;
     outFile_->jetsTree.chs_n = 0;
@@ -654,10 +701,10 @@ void RecoFastTiming::ProcessJets(vector<EcalRecHit>* recVectEK)
 	  JetWithFT timeJet;
 	  if(fabs(chs_jet.eta()) < 1.47)
 	    timeJet = JetWithFT(&chs_jet, &recoVtxCollection_[0], tRes_,
-				recVectEK, ebGeometry_, magField_);
+				recVectHG, hgGeometry_, magField_);
 	  else
 	    timeJet = JetWithFT(&chs_jet, &recoVtxCollection_[0], tRes_,
-				recVectEK, skGeometry_, magField_);
+				recVectHG, hgGeometry_, magField_);
 
 
             timeCorrJets.push_back(timeJet);

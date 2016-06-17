@@ -3,7 +3,15 @@
 <use   name="FWCore/FWLite"/>
 <use   name="FWCore/PythonParameterSet"/>
 <use   name="Geometry/EcalAlgo"/>
+<use   name="Geometry/CaloGeometry"/>
+<use   name="Geometry/Records"/>
+<use   name="Geometry/CaloTopology"/>
+<use   name="Geometry/HcalTowerAlgo"/>
+<use   name="DataFormats/ForwardDetId"/>
+<use   name="Geometry/FCalGeometry"/>
 <use   name="TrackPropagation/SteppingHelixPropagator"/>
+<use   name="RecoCaloTools/Navigation"/>
+<use   name="SimDataFormats/CaloTest"/>
 <use   name="SimDataFormats/Vertex"/>
 <use   name="DataFormats/FWLite"/>
 <use   name="DataFormats/Luminosity"/>

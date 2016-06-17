@@ -7,8 +7,8 @@ typedef std::vector<reco::TrackBaseRef >::const_iterator trackRef_iterator;
 PFCandidateWithFT::PFCandidateWithFT()
 {}
 
-PFCandidateWithFT::PFCandidateWithFT(const reco::PFCandidate* PFCand, vector<EcalRecHit>* ecalRecHits,
-                                     const CaloGeometry* skGeometry, const MagneticField* magField,
+PFCandidateWithFT::PFCandidateWithFT(const reco::PFCandidate* PFCand, vector<HGCRecHit>* ecalRecHits,
+                                     const HGCalGeometry* skGeometry, const MagneticField* magField,
                                      const SimVertex* genVtx, VertexWithFT* recoVtx):
     reco::PFCandidate(*PFCand), clusterE_(0), rawTime_(0), ecalPos_(0,0,0),
     recoVtxPos_(0,0,0), trackL_(-1), propagatedTrackL_(-1), drTrackCluster_(-1)
@@ -51,17 +51,20 @@ PFCandidateWithFT::PFCandidateWithFT(const reco::PFCandidate* PFCand, vector<Eca
 	    }
 	}
     }
-    if(pfCluster_)
-    {
+    if(pfCluster_){   
         FindEcalSeed();
-        const CaloCellGeometry* cell=skGeometry_->getGeometry(ecalSeed_);
-        // if(pfCluster_->isEB()
-        //     ecalPos_ = dynamic_cast<const TruncatedPyramid*>(cell)->getPosition(3.5);
-        // else
-        ecalPos_ = dynamic_cast<const TruncatedPyramid*>(cell)->getPosition(10*0.4-0.075-0.25);
+	//        const CaloCellGeometry* cell;
+	if(fabs(pfCluster_->positionREP().eta()) < 1.47 ) {
+	  //	  cell = skGeometry_->getGeometry(ecalSeed_);
+	  ecalPos_ = skGeometry_->getPosition(ecalSeed_);
+	}
+	else {
+	  //	  cell = skGeometry_->getGeometry(ecalSeed_);
+	  ecalPos_ = skGeometry_->getPosition(ecalSeed_);
+	}
         rawTime_ = GetRecHitTimeE(ecalSeed_).first + GetGenTOF();
         if(GetRecHitTimeMaxE().second != -1)
-            hasTime_ = true;
+	  hasTime_ = true;
         recoVtx_ = NULL;
     }
 }
@@ -121,11 +124,15 @@ vector<FTEcalRecHit>* PFCandidateWithFT::GetRecHits()
                 if(sortedDetId.at(iDet) == recHitColl_->at(iRec).id())
                 {
                     rh_start=iRec+1;
-                    const CaloCellGeometry* cell=skGeometry_->getGeometry(sortedDetId.at(iDet));
-                    GlobalPoint recHitPos = dynamic_cast<const TruncatedPyramid*>(cell)->getPosition(0);
+		    //                    const CaloCellGeometry* cell=skGeometry_->getGeometry(sortedDetId.at(iDet));
+		    //                    GlobalPoint recHitPos = dynamic_cast<const TruncatedPyramid*>(cell)->getPosition(0);		    
+		    const GlobalPoint recHitPos(std::move(skGeometry_->getPosition( sortedDetId.at(iDet) ) ) );
+		    //std::cout << "geometry cell position: " << position << std::endl;
                     FTEcalRecHit tmp(sortedDetId.at(iDet).rawId(),
-                                     EKDetId(sortedDetId.at(iDet)).ix(),
-                                     EKDetId(sortedDetId.at(iDet)).iy(),
+                                     // HGCalDetId(sortedDetId.at(iDet)).ix(),
+                                     // HGCalDetId(sortedDetId.at(iDet)).iy(),
+				     recHitPos.x(),
+				     recHitPos.y(),
                                      recHitPos.z(),
                                      recHitColl_->at(iRec).time()+recHitPos.mag()/30,
                                      recHitColl_->at(iRec).energy());
@@ -147,8 +154,7 @@ vector<FTEcalRecHit>* PFCandidateWithFT::GetRecHits()
 //---      3+0.5 is for the standard EE not SK
 float PFCandidateWithFT::GetGenTOF()
 {
-    const CaloCellGeometry* cell=skGeometry_->getGeometry(ecalSeed_);
-    math::XYZVector ecalBadPos(dynamic_cast<const TruncatedPyramid*>(cell)->getPosition(3+0.5));
+  math::XYZVector ecalBadPos( skGeometry_->getPosition(ecalSeed_) );
     
     //---(distance/c)*1E9
     return ecalBadPos.R()/30;
@@ -156,6 +162,9 @@ float PFCandidateWithFT::GetGenTOF()
 
 float PFCandidateWithFT::GetTOF(tof_algo method)
 {
+
+  std::cout << " PFCandidateWithFT::GetTOF(tof_algo method) = " << method << std::endl;
+
     if(method == pzTOF)
         return p()/(fabs(pz()))*fabs(ecalPos_.z()-recoVtxPos_.z())/30;
     
@@ -175,6 +184,9 @@ float PFCandidateWithFT::GetECALTime(float smearing)
         smearedRawTime_ = rndm.Gaus(rawTime_, smearing);
     }
     
+    std::cout << " rawTime_ = " << rawTime_ << std::endl;
+    std::cout << " smearedRawTime_ = " << smearedRawTime_ << std::endl;
+
     return smearedRawTime_;
 }
 

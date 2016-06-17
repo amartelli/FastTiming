@@ -17,6 +17,15 @@
 #include "DataFormats/Common/interface/SortedCollection.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "DataFormats/ForwardDetId/interface/HGCalDetId.h"
+#include "DataFormats/ForwardDetId/interface/HGCEEDetId.h"
+#include "DataFormats/ForwardDetId/interface/HGCHEDetId.h"
+//#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"                                                                                                                                                     
+#include "Geometry/FCalGeometry/interface/HGCalGeometry.h"
+//#include "SimDataFormats/CaloTest/interface/HGCalTestNumbering.h"                                                                                                                                               
+#include "RecoCaloTools/Navigation/interface/CaloNavigator.h"
+
 #include "FastTiming/RecoTreeUtils/interface/PFCandidateWithFT.h"
 
 using namespace std;
@@ -35,7 +44,7 @@ private:
     virtual void analyze(const edm::Event&, const edm::EventSetup&);
     virtual void endJob();
 
-    const CaloGeometry* skGeometry_;
+  const HGCalGeometry* skGeometry_;
     const MagneticField* magField_;
     //---output file---
     edm::Service<TFileService> fs_;
@@ -49,12 +58,12 @@ private:
     float true_time_;
     //---objects interfaces---
     edm::ESHandle<MagneticField> magFieldHandle_;             
-    edm::ESHandle<CaloGeometry> geoHandle_;
+    edm::ESHandle<HGCalGeometry> geoHandle_;
     edm::Handle<vector<SimVertex> > genSigVtxHandle_;
     edm::Handle<vector<reco::Vertex> > recoVtxHandle_;
     edm::Handle<vector<reco::PFCandidate> > candHandle_;
-    edm::Handle<edm::SortedCollection<EcalRecHit, 
-                                      edm::StrictWeakOrdering<EcalRecHit > > > recSort_;
+    edm::Handle<edm::SortedCollection<HGCRecHit, 
+                                      edm::StrictWeakOrdering<HGCRecHit > > > recSort_;
     //---FT objects---
     vector<VertexWithFT> recoVtxCollection_;
     vector<PFCandidateWithFT> particlesCollection_;
@@ -118,8 +127,12 @@ void BDTInputGenerator::analyze(const edm::Event& Event, const edm::EventSetup& 
     Setup.get<IdealMagneticFieldRecord>().get(magFieldHandle_);
     magField_ = magFieldHandle_.product();
     //---get the geometry---
-    Setup.get<CaloGeometryRecord>().get(geoHandle_);
+    // Setup.get<CaloGeometryRecord>().get(geoHandle_);
+    // skGeometry_ = geoHandle_.product();
+    std::string name = "HGCalEESensitive";
+    Setup.get<IdealGeometryRecord>().get(name,geoHandle_);
     skGeometry_ = geoHandle_.product();
+
     //---get signal gen vertex time---
     const SimVertex* genSignalVtx=NULL;
     Event.getByLabel("g4SimHits", genSigVtxHandle_);
@@ -133,7 +146,7 @@ void BDTInputGenerator::analyze(const edm::Event& Event, const edm::EventSetup& 
                       recSort_);
     if(!recSort_.isValid())
         return;
-    vector<EcalRecHit>* recVect = (vector<EcalRecHit>*)recSort_.product();
+    vector<HGCRecHit>* recVect = (vector<HGCRecHit>*)recSort_.product();
     //---get all particles---
     Event.getByLabel("particleFlow", candHandle_);
 
@@ -168,8 +181,8 @@ void BDTInputGenerator::BuildRecHitsMatrix(vector<FTEcalRecHit> recHits, DetId s
     eOrderedRecHits_.clear();    
 
     int nRH=0;
-    int seed_ix = EKDetId(seed).ix();
-    int seed_iy = EKDetId(seed).iy();
+    int seed_ix = skGeometry_->getPosition(seed).x();
+    int seed_iy = skGeometry_->getPosition(seed).y();
     int* ixs = new int[sqrt_n*sqrt_n];
     int* iys = new int[sqrt_n*sqrt_n];
     for(int iX=-sqrt_n/2; iX<=sqrt_n/2; ++iX)

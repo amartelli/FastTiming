@@ -4,7 +4,7 @@ JetWithFT::JetWithFT()
 {}
 
 JetWithFT::JetWithFT(const reco::PFJet* pfJet, VertexWithFT* pV, float smearing,
-                     vector<EcalRecHit>* recVectEK, const CaloGeometry* skGeometry,
+                     vector<HGCRecHit>* recVectEK, const HGCalGeometry* skGeometry,
                      const MagneticField* magField):
   reco::PFJet(*pfJet), tRes_(smearing)
 {

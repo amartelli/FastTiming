@@ -12,7 +12,7 @@ public:
     //---ctors---
     JetWithFT();
     JetWithFT(const reco::PFJet* pfJet, VertexWithFT* pV, float smearing,
-              vector<EcalRecHit>* ecalRecHits, const CaloGeometry* skGeometry,
+              vector<HGCRecHit>* ecalRecHits, const HGCalGeometry* skGeometry,
               const MagneticField* magField);
     //---dtor---
     ~JetWithFT(){};

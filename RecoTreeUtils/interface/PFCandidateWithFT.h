@@ -16,18 +16,53 @@
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/Common/interface/RefToBase.h" 
+
 #include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
+#include "DataFormats/HGCRecHit/interface/HGCRecHit.h"
+#include "DataFormats/CaloRecHit/interface/CaloRecHit.h"
+
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/ParticleFlowReco/interface/PFRecTrack.h"
 #include "DataFormats/ParticleFlowReco/interface/PFCluster.h"
 #include "DataFormats/ParticleFlowReco/interface/PFBlock.h"
 #include "DataFormats/ParticleFlowReco/interface/PFBlockElement.h"
 #include "DataFormats/ParticleFlowReco/interface/PFBlockElementTrack.h"
-#include "DataFormats/EcalDetId/interface/EKDetId.h"
+/* #include "DataFormats/EcalDetId/interface/EKDetId.h" */
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "DataFormats/DetId/interface/DetId.h"
+#include "DataFormats/ForwardDetId/interface/ForwardSubdetector.h"
+
+/* #include "Geometry/CaloGeometry/interface/CaloGeometry.h" */
+/* #include "Geometry/Records/interface/CaloGeometryRecord.h" */
+/* #include "Geometry/CaloGeometry/interface/TruncatedPyramid.h" */
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+//#include "Geometry/Records/interface/HGCalGeometry.h"
+//#include "DataFormats/ForwardDetId/interface/HGCalDetId.h"
+#include "Geometry/FCalGeometry/interface/HGCalGeometry.h"
+
+//from hydra
+#include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
-#include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "Geometry/CaloGeometry/interface/CaloCellGeometry.h"
 #include "Geometry/CaloGeometry/interface/TruncatedPyramid.h"
+#include "Geometry/Records/interface/CaloGeometryRecord.h"
+//#include "Geometry/EcalAlgo/interface/EcalEndcapGeometry.h"
+//#include "Geometry/EcalAlgo/interface/EcalBarrelGeometry.h"
+//#include "Geometry/CaloTopology/interface/EcalEndcapTopology.h"
+//#include "Geometry/CaloTopology/interface/EcalBarrelTopology.h"
+#include "Geometry/HcalTowerAlgo/interface/HcalGeometry.h"
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/CaloGeometry/interface/FlatTrd.h"
+
+#include "DataFormats/HGCRecHit/interface/HGCRecHit.h"
+
+#include "DataFormats/ForwardDetId/interface/HGCalDetId.h"
+#include "DataFormats/ForwardDetId/interface/HGCEEDetId.h"
+#include "DataFormats/ForwardDetId/interface/HGCHEDetId.h"
+#include "Geometry/FCalGeometry/interface/HGCalGeometry.h"
+//#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"
+//#include "SimDataFormats/CaloTest/interface/HGCalTestNumbering.h"
+#include "RecoCaloTools/Navigation/interface/CaloNavigator.h"
 
 #include "TrackPropagation/SteppingHelixPropagator/interface/SteppingHelixPropagator.h"
 #include "TrackingTools/TrajectoryState/interface/FreeTrajectoryState.h"
@@ -54,8 +89,8 @@ class PFCandidateWithFT : public reco::PFCandidate
 public:
     //---ctors---
     PFCandidateWithFT();
-    PFCandidateWithFT(const reco::PFCandidate* PFCand, vector<EcalRecHit>* ecalRecHits,
-                      const CaloGeometry* skGeometry_, const MagneticField* magField,
+    PFCandidateWithFT(const reco::PFCandidate* PFCand, vector<HGCRecHit>* ecalRecHits,
+                      const HGCalGeometry* skGeometry_, const MagneticField* magField,
                       const SimVertex* genVtx=NULL, VertexWithFT* recoVtx=NULL);
     //---dtor---
     ~PFCandidateWithFT();
@@ -90,10 +125,10 @@ private:
     const reco::PFCandidate* pfCand_;
     const reco::PFCluster*   pfCluster_;    
     const MagneticField*     magField_;
-    const CaloGeometry*      skGeometry_;
+    const HGCalGeometry*      skGeometry_;
     const SimVertex*         genVtx_;
     VertexWithFT*            recoVtx_;
-    vector<EcalRecHit>*      recHitColl_;
+    vector<HGCRecHit>*       recHitColl_;
     vector<FTEcalRecHit>     ftRecHits_;
     REPPoint                 pfClusterPos_;    
     DetId                    ecalSeed_;

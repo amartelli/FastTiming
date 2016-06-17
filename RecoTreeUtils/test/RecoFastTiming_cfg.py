@@ -23,6 +23,8 @@ filesOpt = cms.PSet(
 
 GetSampleFiles(options.sampleName, "", filesOpt)
 
+#print "nameMod = ", nameMod
+
 ##------------------------------------------------------------------------------
 
 process = cms.Process("RecoFastTiming")
@@ -38,12 +40,14 @@ process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService
 randHelper = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
 randHelper.populate()
 
-## load the SK geometry and magnetic field config
-process.load('Configuration.Geometry.GeometryExtended2023SHCalNoTaperReco_cff')
+## load the HG geometry and magnetic field config
+process.load('Configuration.Geometry.GeometryExtended2023HGCalMuonReco_cff')
+process.load('Configuration.Geometry.GeometryExtended2023HGCalMuon_cff')
 process.load('Configuration.StandardSequences.MagneticField_38T_PostLS1_cff')
+
 process.load('Configuration/StandardSequences/FrontierConditions_GlobalTag_cff')
 ## import standard RecoFT configurations
-process.load("IOMC.EventVertexGenerators.GhostVtxSmearedHLLHC_cfi")
+#process.load("IOMC.EventVertexGenerators.GhostVtxSmearedHLLHC_cfi")
 process.load("FastTiming.RecoTreeUtils.RecoFastTiming_cff")
 
 #process.RecoFastTiming.makeGhosts = cms.untracked.bool(True);

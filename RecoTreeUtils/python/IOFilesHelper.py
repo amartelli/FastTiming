@@ -12,8 +12,9 @@ def GetSampleFiles(sampleName, nameMod, filesOpt):
         filesOpt.outputFile = cms.string("$CMSSW_BASE/src/FastTiming/RecoTreeUtils/ntuples/pippo"+nameMod+".root")
         
         filesOpt.inputFiles = cms.untracked.vstring(
-#            'root://xrootd.unl.edu//store/mc/TP2023SHCALDR/VBF_HToGG_M-125_14TeV-powheg-pythia6/GEN-SIM-RECO/SHCALTIME_PU140BX25_SHCalTime_PH2_1K_FB_V6-v1/00000/06211C4B-E810-E511-82A0-002590200814.root'
-             'file:./fileVBF_Hgg_140PU.root'
+            #'root://xrootd.unl.edu//store/mc/TP2023SHCALDR/VBF_HToGG_M-125_14TeV-powheg-pythia6/GEN-SIM-RECO/SHCALTIME_PU140BX25_SHCalTime_PH2_1K_FB_V6-v1/00000/06211C4B-E810-E511-82A0-002590200814.root'
+            #'file:./fileVBF_Hgg_140PU.root'
+            'file:$CMSSW_BASE/src/test/step3.root'
             )
 
         
